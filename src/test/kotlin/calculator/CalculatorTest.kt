@@ -4,108 +4,19 @@ import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
-import org.junit.jupiter.params.provider.Arguments
 import org.junit.jupiter.params.provider.CsvSource
-import org.junit.jupiter.params.provider.MethodSource
 import org.junit.jupiter.params.provider.ValueSource
-import java.util.stream.Stream
-
-class TokenizeTest {
-
-    @ParameterizedTest
-    @ValueSource(strings = ["", " ", "   ", "\t", "\n", "\t\n", "\n\t", " \n \t"])
-    fun `공백 문자를 입력하면 빈 리스트를 출력한다`(input: String) {
-        assertThat(input.tokenize()).isEmpty()
-    }
-
-    @ParameterizedTest
-    @MethodSource("provideTokenWhiteSpaceTestArgument")
-    fun `앞선 공백 문자나 연속된 공백 문자, 뒤의 공백문자는 제거된다`(input: String, result: List<String>) {
-        assertThat(input.tokenize()).isEqualTo(result)
-    }
-
-    @Test
-    fun `null 이 입력되면 IllegalArgumentException 을 던진다`() {
-        assertThatThrownBy {
-            val expression: String? = null
-            expression.tokenize()
-        }.isInstanceOf(IllegalArgumentException::class.java)
-    }
-
-    companion object {
-
-        @JvmStatic
-        fun provideTokenWhiteSpaceTestArgument(): Stream<Arguments> = Stream.of(
-            Arguments.of("  1 + 2", listOf("1", "+", "2")),
-            Arguments.of("13 - 21   ", listOf("13", "-", "21")),
-            Arguments.of("15543 * 21121 \n ", listOf("15543", "*", "21121")),
-            Arguments.of("-231 \t  /  232", listOf("-231", "/", "232")),
-        )
-    }
-}
-
-class NonPrecedenceParserTest {
-
-    private val parser = NonPrecedenceParser()
-
-    @Test
-    fun `빈 리스트는 Undefined object 를 리턴한다`() {
-        assertThat(parser.parse(emptyList())).isEqualTo(Expression.Undefined)
-    }
-
-    @ParameterizedTest
-    @ValueSource(ints = [0, 1, -1, 100, Int.MAX_VALUE, Int.MIN_VALUE])
-    fun `단일 숫자 리스트는 숫자 값을 value 로 갖는 Operand 클래스를 리턴한다`(input: Int) {
-        assertThat(parser.parse(listOf(input.toString()))).isEqualTo(Expression.Operand(input))
-    }
-
-    @Test
-    fun `사칙 연산자는 Operator 클래스를 리턴한다`() {
-        assertThat(parser.parse(listOf("+"))).isEqualTo(Expression.Operator(Int::plus))
-        assertThat(parser.parse(listOf("-"))).isEqualTo(Expression.Operator(Int::minus))
-        assertThat(parser.parse(listOf("*"))).isEqualTo(Expression.Operator(Int::times))
-        assertThat(parser.parse(listOf("/"))).isEqualTo(Expression.Operator(Int::div))
-    }
-
-    @Test
-    fun `사칙 연산은 피 연산자를 operand 로 갖는 Operator 클래스를 리턴한다`() {
-        assertThat(parser.parse(listOf("1", "+", "-1"))).isEqualTo(
-            Expression.Operator(Int::plus, Expression.Operand(1), Expression.Operand(-1))
-        )
-        assertThat(parser.parse(listOf("24", "-", "31"))).isEqualTo(
-            Expression.Operator(Int::minus, Expression.Operand(24), Expression.Operand(31))
-        )
-        assertThat(parser.parse(listOf("6", "*", "53"))).isEqualTo(
-            Expression.Operator(Int::times, Expression.Operand(6), Expression.Operand(53))
-        )
-        assertThat(parser.parse(listOf("7", "/", "2"))).isEqualTo(
-            Expression.Operator(Int::div, Expression.Operand(7), Expression.Operand(2))
-        )
-    }
-
-    @Test
-    fun `숫자와 사칙연산 이외의 문자열은 IllegalArgumentException 을 던진다`() {
-        assertThatThrownBy { parser.parse(listOf("31.42", "+", "-1")) }.isInstanceOf(IllegalArgumentException::class.java)
-        assertThatThrownBy { parser.parse(listOf("42", "^", "21")) }.isInstanceOf(IllegalArgumentException::class.java)
-        assertThatThrownBy { parser.parse(listOf("(", "3", ")")) }.isInstanceOf(IllegalArgumentException::class.java)
-        assertThatThrownBy { parser.parse(listOf("abc", "+", "가나다")) }.isInstanceOf(IllegalArgumentException::class.java)
-    }
-
-    @Test
-    fun `여러 사칙 연산이 조합된 수식은 마지막 연산자의 Operator 클래스를 리턴한다`() {
-        val parsed = parser.parse(listOf("7", "+", "2", "-", "3"))
-        assertThat(parsed).isInstanceOf(Expression.Operator::class.java)
-
-        val operator = parsed as Expression.Operator
-        assertThat(operator.function).isEqualTo((parser.parse(listOf("-")) as Expression.Operator).function)
-        assertThat(operator.firstOperand).isEqualTo(parser.parse(listOf("7", "+", "2")))
-        assertThat(operator.secondOperand).isEqualTo(Expression.Operand(3))
-    }
-}
 
 class CalculatorTest {
 
     private val calculator = Calculator()
+
+    @Test
+    fun `null 이 입력되면 IllegalArgumentException 을 던진다`() {
+        assertThatThrownBy {
+            calculator.calculate(null)
+        }.isInstanceOf(IllegalArgumentException::class.java)
+    }
 
     @ParameterizedTest
     @CsvSource(value = ["1 + 2:3", "2 + 3:5", "10 + 0:10", "100 + 100:200", "-1 + 2:1", "1 + -2:-1"], delimiter = ':')
